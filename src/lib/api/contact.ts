@@ -9,6 +9,10 @@ export interface ContactData {
 }
 
 export async function sendContactMessage(data: ContactData) {
+
+    console.log('📤 Enviando para:', `${API_URL}/api/contact`) // 👈 Adicione isso
+  console.log('📦 Dados:', data)
+  
   const response = await fetch(`${API_URL}/api/contact`, {
     method: 'POST',
     headers: {
