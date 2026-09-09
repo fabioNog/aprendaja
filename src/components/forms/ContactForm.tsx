@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { GoogleReCaptchaProvider, useGoogleReCaptcha } from 'react-google-recaptcha-v3'
 import { contactConfig } from '@/lib/config/contact'
 import type { ContactFormData } from '@/types'
 import { sendContactMessage } from '@/lib/api/contact'
@@ -16,7 +17,9 @@ const interestAreas = [
   'Outro'
 ]
 
-export function ContactForm() {
+function ContactFormInner() {
+  const { executeRecaptcha } = useGoogleReCaptcha()
+
   const [formData, setFormData] = useState<ContactFormData>({
     name: '',
     email: '',
@@ -51,13 +54,11 @@ export function ContactForm() {
       errors.push('Nome deve ter pelo menos 3 caracteres')
     }
 
-    // Validação de email
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     if (!formData.email || !emailRegex.test(formData.email)) {
       errors.push('Digite um e-mail válido (ex: nome@email.com)')
     }
 
-    // Validação de telefone (formato brasileiro)
     const phoneRegex = /^\(\d{2}\) \d{5}-\d{4}$/
     if (formData.whatsapp && !phoneRegex.test(formData.whatsapp)) {
       errors.push('Telefone deve estar no formato (XX) XXXXX-XXXX')
@@ -75,55 +76,80 @@ export function ContactForm() {
   }
 
 const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault()
-  
-  const errors = validateForm()
-  if (errors.length > 0) {
-    setValidationErrors(errors)
-    setSubmitStatus('error')
-    return
-  }
-
-  setIsSubmitting(true)
-  setSubmitStatus('idle')
-  setValidationErrors([])
-
-  console.log('🚀 Enviando formulário...', formData)
-
-  try {
-    const result = await sendContactMessage(formData)
-    console.log('✅ Sucesso:', result)
-    setSubmitStatus('success')
-    setFormData({
-      name: '',
-      email: '',
-      whatsapp: '',
-      interestArea: '',
-      message: ''
-    })
-  } catch (error: unknown) { // 👈 Mude de 'any' para 'unknown'
-    console.error('❌ Erro:', error)
+    e.preventDefault()
     
-    // 👈 Tipo guard para verificar se é um objeto com response
-    if (error && typeof error === 'object' && 'response' in error) {
-      const errorResponse = error as { response: { data: { message: string | string[] } } }
-      if (errorResponse.response?.data?.message) {
-        const backendErrors = Array.isArray(errorResponse.response.data.message) 
-          ? errorResponse.response.data.message 
-          : [errorResponse.response.data.message]
+    const errors = validateForm()
+    if (errors.length > 0) {
+      setValidationErrors(errors)
+      setSubmitStatus('error')
+      return
+    }
+
+    if (!executeRecaptcha) {
+      setValidationErrors(['Aguarde o carregamento do sistema de segurança e tente novamente.'])
+      setSubmitStatus('error')
+      return
+    }
+
+    setIsSubmitting(true)
+    setSubmitStatus('idle')
+    setValidationErrors([])
+
+    try {
+      const token = await executeRecaptcha('contact_form')
+
+      const payload = {
+        ...formData,
+        recaptchaToken: token
+      }
+
+      console.log('🚀 Enviando formulário com token reCAPTCHA...', payload)
+
+      const result = await sendContactMessage(payload)
+      console.log('Resposta do servidor:', result)
+
+      // 🛑 VALIDAÇÃO: Verifica se o backend retornou success: false
+      if (result && result.success === false) {
+        const backendErrors = result.errors && result.errors.length > 0 
+          ? result.errors 
+          : [result.message || 'Erro ao validar reCAPTCHA. Tente novamente.']
+        
         setValidationErrors(backendErrors)
+        setSubmitStatus('error')
+        return
+      }
+
+      // ✅ Sucesso real
+      setSubmitStatus('success')
+      setFormData({
+        name: '',
+        email: '',
+        whatsapp: '',
+        interestArea: '',
+        message: ''
+      })
+    } catch (error: unknown) {
+      console.error('❌ Erro:', error)
+      
+      if (error && typeof error === 'object' && 'response' in error) {
+        const errorResponse = error as { response: { data: { message: string | string[] } } }
+        if (errorResponse.response?.data?.message) {
+          const backendErrors = Array.isArray(errorResponse.response.data.message) 
+            ? errorResponse.response.data.message 
+            : [errorResponse.response.data.message]
+          setValidationErrors(backendErrors)
+        } else {
+          setValidationErrors(['Erro ao enviar mensagem. Tente novamente.'])
+        }
       } else {
         setValidationErrors(['Erro ao enviar mensagem. Tente novamente.'])
       }
-    } else {
-      setValidationErrors(['Erro ao enviar mensagem. Tente novamente.'])
+      
+      setSubmitStatus('error')
+    } finally {
+      setIsSubmitting(false)
     }
-    
-    setSubmitStatus('error')
-  } finally {
-    setIsSubmitting(false)
   }
-}
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6" noValidate>
@@ -269,5 +295,13 @@ const handleSubmit = async (e: React.FormEvent) => {
         </a>
       </p>
     </form>
+  )
+}
+
+export function ContactForm() {
+  return (
+    <GoogleReCaptchaProvider reCaptchaKey={process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || 'YOUR_SITE_KEY'}>
+      <ContactFormInner />
+    </GoogleReCaptchaProvider>
   )
 }

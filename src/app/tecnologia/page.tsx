@@ -128,9 +128,9 @@ export default function TecnologiaPage() {
         {/* Diferencial */}
         <div className="bg-blue-50 rounded-2xl p-8 mb-12 text-center border border-blue-200">
           <p className="text-lg text-blue-800 font-medium">
-            🎯 "Aprenda programação com um professor que tem experiência prática 
+            🎯 &quot;Aprenda programação com um professor que tem experiência prática 
             em desenvolvimento de software e sabe transformar conceitos complexos 
-            em explicações simples."
+            em explicações simples.&quot;
           </p>
         </div>
 
