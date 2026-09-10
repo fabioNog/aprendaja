@@ -1,10 +1,12 @@
 {
   "env": {
-    "NEXT_PUBLIC_API_URL": "https://aprendaja-backend.onrender.com"
+    "NEXT_PUBLIC_API_URL": "https://aprendaja-backend.onrender.com",
+    "NEXT_PUBLIC_RECAPTCHA_SITE_KEY": "6Lf6-bItAAAAAILQOyIFRruovBx7WgghEjQrqp3O"
   },
   "build": {
     "env": {
-      "NEXT_PUBLIC_API_URL": "https://aprendaja-backend.onrender.com"
+      "NEXT_PUBLIC_API_URL": "https://aprendaja-backend.onrender.com",
+      "NEXT_PUBLIC_RECAPTCHA_SITE_KEY": "6Lf6-bItAAAAAILQOyIFRruovBx7WgghEjQrqp3O"
     }
   }
 }
